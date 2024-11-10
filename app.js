@@ -5,26 +5,28 @@ const https = require('https');
 const app = express();
 const port = 9000;
 
-
 const agent = new https.Agent({
   keepAlive: true,
-  rejectUnauthorized: false,
+  rejectUnauthorized: true,
 });
 
 app.use('/', createProxyMiddleware({
   target: 'https://api.openai.com',
   changeOrigin: true,
   secure: true,
-  timeout: 100000, 
-  proxyTimeout: 100000, 
+  timeout: 100000,
+  proxyTimeout: 100000,
   agent: agent,
   logLevel: 'warn',
   onProxyReq: (proxyReq, req, res) => {
     proxyReq.removeHeader('x-forwarded-for');
     proxyReq.removeHeader('x-real-ip');
-    proxyReq.setHeader('Connection', 'keep-alive'); 
-    Object.keys(req.headers).forEach((header) => {
-      proxyReq.setHeader(header, req.headers[header]);
+    proxyReq.setHeader('Connection', 'keep-alive');
+
+    ['user-agent', 'accept', 'content-type', 'authorization'].forEach(header => {
+      if (req.headers[header]) {
+        proxyReq.setHeader(header, req.headers[header]);
+      }
     });
   },
   onProxyRes: (proxyRes, req, res) => {
@@ -39,7 +41,6 @@ app.use('/', createProxyMiddleware({
     }
   },
 }));
-
 
 app.listen(port, () => {
   console.log(`Прокси-сервер запущен по адресу: http://0.0.0.0:${port}`);
